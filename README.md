@@ -116,7 +116,7 @@ v4.1 adds model-agnostic portability on top of the v4.0 architecture:
 
 ## Programmer's Guide
 
-Full documentation: **s220284.github.io/claude-code-setup**
+Full documentation: **https://s220284.github.io/claude-code-setup**
 
 The guide covers the complete script walkthrough, hooks system, modular rules,
 each generated file explained, global plugins and skills reference, and

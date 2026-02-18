@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Claude Code Project Setup Script v4.1
+# Claude Code Project Setup Script v4.1.0
 # Creates CLAUDE.md and supporting files for new projects
 #
 # Usage: ./setup-claude-project.sh [project_name] [project_description]
@@ -383,7 +383,7 @@ gh run list --limit 3
 5. Commit with `fix:` prefix
 
 ### Switching AI Models (from Claude Code)
-1. In Claude Code, say: "commit for model handoff"  or run /handoff
+1. In Claude Code, say: "commit for model handoff" or run /handoff
 2. Claude Code populates all state files and commits
 3. Open the project in your new AI tool
 4. The new model reads PROJECT_STATE.md → SESSION_LOG.md → CONTINUATION_GUIDE.md
@@ -658,7 +658,7 @@ Stage and commit all three state files:
 
 ```bash
 git add SESSION_LOG.md PROJECT_STATE.md CONTINUATION_GUIDE.md
-git commit -m "$(cat <<'COMMIT_EOF'
+git diff --cached --quiet || git commit -m "$(cat <<'COMMIT_EOF'
 chore: model handoff - state files updated for cross-model continuity
 
 - SESSION_LOG.md updated with current session summary and next steps
