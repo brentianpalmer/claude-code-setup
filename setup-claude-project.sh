@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Claude Code Project Setup Script v4.0
+# Claude Code Project Setup Script v4.1
 # Creates CLAUDE.md and supporting files for new projects
 #
 # Usage: ./setup-claude-project.sh [project_name] [project_description]
@@ -9,10 +9,13 @@
 #   ./setup-claude-project.sh MyApp "A web application for task management"
 #   ./setup-claude-project.sh  # Interactive mode
 #
-# Version: 4.0.0
+# Version: 4.1.0
 # Updated: February 2026
-# Changes: Hooks, modular rules, auto-memory, language-agnostic, slimmer CLAUDE.md
-#
+# Changes: Model-agnostic session continuity, /handoff skill, restored session
+#          files (SESSION_LOG.md, CONTINUATION_GUIDE.md) as cross-model memory
+#          layer. Claude Code still uses auto-memory by default; other models
+#          use the session files. Explicit /handoff command snapshots state for
+#          seamless model switching.
 
 set -e
 
@@ -25,7 +28,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}  Claude Code Project Setup v4.0${NC}"
+echo -e "${BLUE}  Claude Code Project Setup v4.1${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
@@ -135,13 +138,29 @@ Add more rules files as your project grows. Use `paths:` frontmatter to scope ru
 
 ---
 
-## Session Continuity
+## Session Continuity Protocol
 
-Claude Code's **auto-memory** handles session context automatically. For manual tracking:
+**If you are Claude Code:**
+Auto-memory is your session context. Do NOT read or update SESSION_LOG.md,
+PROJECT_STATE.md, or CONTINUATION_GUIDE.md during normal operation.
+This keeps your context window clean and token usage low.
 
-| File | Purpose | Update When |
-|------|---------|-------------|
-| `PROJECT_STATE.md` | System status snapshot | After feature completion |
+Model handoff: If the user says "commit for model handoff", "prepare handoff
+to [model]", or invokes /handoff — run the handoff skill. It will populate
+all state files and produce a labeled commit. The receiving model uses those
+files as its starting context.
+
+**If you are any other model (OpenAI, Copilot, Gemini, Cursor, etc.):**
+These files ARE your memory. You have no other persistent context.
+
+Session start — read in this order:
+  1. PROJECT_STATE.md      → current system status
+  2. SESSION_LOG.md        → work history and next steps
+  3. CONTINUATION_GUIDE.md → startup commands and key workflows
+
+Session end / after every commit — update:
+  SESSION_LOG.md   (append: work done, decisions made, next steps)
+  PROJECT_STATE.md (update status table if system state changed)
 
 ---
 
@@ -151,7 +170,9 @@ Claude Code's **auto-memory** handles session context automatically. For manual 
 PROJECT_NAME_PLACEHOLDER/
 ├── CLAUDE.md              # This file (auto-loaded)
 ├── CLAUDE.local.md        # Personal overrides (gitignored)
-├── PROJECT_STATE.md       # System status
+├── PROJECT_STATE.md       # System status (handoff layer)
+├── SESSION_LOG.md         # Work history (handoff layer)
+├── CONTINUATION_GUIDE.md  # Resume guide (handoff layer)
 ├── src/                   # Source code
 ├── tests/                 # Test files
 ├── docs/                  # Documentation
@@ -163,7 +184,8 @@ PROJECT_NAME_PLACEHOLDER/
     │   ├── code-style.md  # Coding conventions
     │   └── testing.md     # Testing standards
     └── skills/            # Custom skills
-        └── commit/        # Commit workflow skill
+        ├── commit/        # Commit workflow skill
+        └── handoff/       # Model handoff skill
 ```
 
 ---
@@ -172,7 +194,8 @@ PROJECT_NAME_PLACEHOLDER/
 
 ### Local Skills (`.claude/skills/`)
 
-- `/commit` — Git commit workflow with conventional format
+- `/commit`  — Git commit workflow with conventional format
+- `/handoff` — Populate state files and commit for model switch
 
 ### Global Plugins
 
@@ -237,7 +260,7 @@ cat > PROJECT_STATE.md << EOF
 
 ## Recent Changes
 
-- $CURRENT_DATE: Project initialized with Claude Code setup v4.0
+- $CURRENT_DATE: Project initialized with Claude Code setup v4.1
 
 ---
 
@@ -253,6 +276,135 @@ Define initial project scope and requirements.
 EOF
 
 echo -e "${GREEN}✓ Created PROJECT_STATE.md${NC}"
+
+# ============================================================================
+# Create SESSION_LOG.md - Append-only work history (cross-model memory layer)
+# ============================================================================
+cat > SESSION_LOG.md << EOF
+# $PROJECT_NAME - Session Log
+
+Append-only log of AI work sessions. Most recent entry at top.
+
+Updated by non-Claude models every session, and by Claude Code on /handoff.
+
+---
+
+## Session: $CURRENT_DATE
+
+### Summary
+- Initialized project with claude-code-setup v4.1 (model-agnostic edition)
+- Created project directory structure and all configuration files
+
+### Files Created
+- CLAUDE.md — AI instructions with model-agnostic continuity protocol
+- PROJECT_STATE.md — System status tracker
+- SESSION_LOG.md — This file
+- CONTINUATION_GUIDE.md — Resume guide
+- .claude/settings.json — Hooks and permissions configuration
+- .claude/rules/code-style.md — Code conventions (path-scoped to src/**)
+- .claude/rules/testing.md — Testing standards (path-scoped to tests/**)
+- .claude/skills/commit/SKILL.md — Conventional commit workflow
+- .claude/skills/handoff/SKILL.md — Model handoff workflow
+- .github/workflows/ci.yml — Language-agnostic CI template
+
+### Decisions Made
+- Using claude-code-setup v4.1 with model-agnostic session continuity
+- Claude Code uses auto-memory during normal operation (no token overhead)
+- Other models (Codex, Copilot, Gemini, etc.) use these session files as memory
+- Handoff between models triggered explicitly via /handoff skill
+
+### Next Steps
+- [ ] Define project requirements
+- [ ] Set up development environment
+- [ ] Create initial implementation plan
+- [ ] Configure MCP servers if needed
+
+### Open Questions
+- None yet
+
+---
+EOF
+
+echo -e "${GREEN}✓ Created SESSION_LOG.md${NC}"
+
+# ============================================================================
+# Create CONTINUATION_GUIDE.md - Quick-start reference (cross-model memory layer)
+# ============================================================================
+cat > CONTINUATION_GUIDE.md << 'EOF'
+# CONTINUATION_GUIDE.md
+
+Quick reference for resuming work on this project.
+Update this file whenever startup commands or key workflows change.
+
+---
+
+## Startup Commands
+
+```bash
+# 1. Check git status
+git status
+
+# 2. Check for running processes
+ps aux | grep node   # adjust for your stack
+
+# 3. Run tests (once they exist)
+# [add your test command here]
+
+# 4. Check recent CI runs
+gh run list --limit 3
+```
+
+---
+
+## State Verification
+
+1. Read PROJECT_STATE.md — current component status and known issues
+2. Read SESSION_LOG.md — recent work and next steps
+3. Check recent commits: `git log --oneline -5`
+
+---
+
+## Key Workflows
+
+### Adding a New Feature
+1. Note intent in SESSION_LOG.md (for non-Claude models)
+2. Plan before implementing
+3. Implement the feature with tests
+4. Run tests and verify passing
+5. Commit with conventional message
+6. Update PROJECT_STATE.md if system status changed
+7. Append session summary to SESSION_LOG.md
+
+### Fixing a Bug
+1. Reproduce the bug
+2. Write a failing test
+3. Fix the bug
+4. Verify test passes
+5. Commit with `fix:` prefix
+
+### Switching AI Models (from Claude Code)
+1. In Claude Code, say: "commit for model handoff"  or run /handoff
+2. Claude Code populates all state files and commits
+3. Open the project in your new AI tool
+4. The new model reads PROJECT_STATE.md → SESSION_LOG.md → CONTINUATION_GUIDE.md
+
+---
+
+## Important Files
+
+| File | Purpose |
+|------|---------|
+| CLAUDE.md | AI instructions (always read at startup) |
+| PROJECT_STATE.md | Current system status |
+| SESSION_LOG.md | Work history and next steps |
+| .claude/settings.json | MCP servers and hooks config |
+
+---
+
+*Update this file when startup commands or key workflows change.*
+EOF
+
+echo -e "${GREEN}✓ Created CONTINUATION_GUIDE.md${NC}"
 
 # ============================================================================
 # Create .claude/settings.json - Configuration with Hooks
@@ -436,6 +588,113 @@ EOF
 echo -e "${GREEN}✓ Created .claude/skills/commit/SKILL.md${NC}"
 
 # ============================================================================
+# Create handoff skill - Model portability (new in v4.1)
+# ============================================================================
+mkdir -p .claude/skills/handoff
+
+cat > .claude/skills/handoff/SKILL.md << 'EOF'
+---
+name: handoff
+description: Prepare this project for handoff to a different AI model. Populates SESSION_LOG.md, PROJECT_STATE.md, and CONTINUATION_GUIDE.md with current state, then commits.
+user-invocable: true
+---
+
+# Handoff Skill
+
+Run this skill when the user wants to switch from Claude Code to another AI
+model (OpenAI, Copilot, Gemini, Cursor, etc.), or any time project state files
+need to be refreshed for cross-model portability.
+
+**Trigger phrases:** "commit for model handoff", "prepare handoff to [model]",
+"I want to switch to [model]", or `/handoff`
+
+---
+
+## Steps
+
+### 1. Gather current state
+- Run `git log --oneline -10` to review recent commits
+- Run `git status` to check for any uncommitted changes
+- Note what was worked on during this session
+
+### 2. Update SESSION_LOG.md
+Append a new session entry at the top (below the header, above previous entries):
+
+```markdown
+## Session: YYYY-MM-DD
+
+### Summary
+- [What was worked on this session]
+
+### Files Created/Modified
+- [list files changed]
+
+### Decisions Made
+- [key decisions and the reasoning]
+
+### Next Steps
+- [ ] [concrete next step for the receiving model]
+- [ ] [another next step]
+
+### Open Questions
+- [anything unresolved]
+
+---
+```
+
+### 3. Update PROJECT_STATE.md
+Refresh:
+- System Status table — update component statuses to reflect current reality
+- Current Production State — version, environment, URL if applicable
+- Recent Changes — add an entry for today's work
+- Known Issues — add any new issues discovered, remove resolved ones
+
+### 4. Verify CONTINUATION_GUIDE.md
+Check that startup commands and key workflows are still accurate.
+Update if anything has changed (new test commands, new env setup, etc.).
+
+### 5. Commit the handoff
+Stage and commit all three state files:
+
+```bash
+git add SESSION_LOG.md PROJECT_STATE.md CONTINUATION_GUIDE.md
+git commit -m "$(cat <<'COMMIT_EOF'
+chore: model handoff - state files updated for cross-model continuity
+
+- SESSION_LOG.md updated with current session summary and next steps
+- PROJECT_STATE.md refreshed with current system status
+- CONTINUATION_GUIDE.md verified and updated if needed
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+COMMIT_EOF
+)"
+```
+
+---
+
+## What the Receiving Model Should Do
+
+When a non-Claude model picks up this project after a handoff commit:
+1. Read `PROJECT_STATE.md` → `SESSION_LOG.md` → `CONTINUATION_GUIDE.md`
+2. Follow the Session Continuity Protocol in CLAUDE.md
+3. Update the session files at the end of every session
+
+---
+
+## Notes
+
+- Only run this when actually switching models — not on every session
+- If the user changes their mind and stays on Claude Code, no harm done;
+  the state files will simply be current and accurate
+- The handoff commit is a normal git commit — it shows in git log and is
+  fully reversible
+- If there are uncommitted code changes, commit those first with /commit,
+  then run /handoff
+EOF
+
+echo -e "${GREEN}✓ Created .claude/skills/handoff/SKILL.md${NC}"
+
+# ============================================================================
 # Create .gitignore
 # ============================================================================
 if [ ! -f .gitignore ]; then
@@ -554,11 +813,13 @@ if [ ! -d .git ]; then
     if [ "$INIT_GIT" = "y" ] || [ "$INIT_GIT" = "Y" ]; then
         git init
         git add .
-        git commit -m "chore: Initialize project with Claude Code setup v4.0
+        git commit -m "chore: Initialize project with Claude Code setup v4.1
 
 Project Files:
-- CLAUDE.md - Session reference (slimmed down, language-agnostic)
-- PROJECT_STATE.md - Status tracking
+- CLAUDE.md - Session reference with model-agnostic continuity protocol
+- PROJECT_STATE.md - Status tracking (handoff layer)
+- SESSION_LOG.md - Append-only work history (handoff layer)
+- CONTINUATION_GUIDE.md - Quick-start reference (handoff layer)
 
 Configuration:
 - .claude/settings.json - Permissions, hooks (shell fixer, notifications)
@@ -566,14 +827,15 @@ Configuration:
 - .claude/rules/code-style.md - Path-specific code conventions
 - .claude/rules/testing.md - Path-specific testing standards
 - .claude/skills/commit/ - Commit skill with YAML frontmatter
+- .claude/skills/handoff/ - Model handoff skill (new in v4.1)
 - .github/workflows/ci.yml - CI pipeline template
 
-v4.0 Changes:
-- Hooks: PostToolUse shell fixer, Notification alerts
-- Modular rules with path-specific frontmatter
-- Auto-memory replaces SESSION_LOG.md and CONTINUATION_GUIDE.md
-- Language-agnostic (no Python-specific references)
-- CLAUDE.md under 100 lines
+v4.1 Changes:
+- Model-agnostic session continuity (three-state model)
+- Claude Code uses auto-memory; session files untouched during normal operation
+- /handoff skill: explicit handoff commit when switching AI models
+- SESSION_LOG.md and CONTINUATION_GUIDE.md restored as cross-model memory layer
+- CLAUDE.md template updated with conditional Claude Code / other-model protocol
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
         echo -e "${GREEN}✓ Initialized git repository and made initial commit${NC}"
@@ -587,41 +849,46 @@ fi
 # ============================================================================
 echo ""
 echo -e "${BLUE}========================================${NC}"
-echo -e "${GREEN}  Setup Complete! (v4.0)${NC}"
+echo -e "${GREEN}  Setup Complete! (v4.1)${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 echo -e "Created files:"
-echo -e "  ${GREEN}✓${NC} CLAUDE.md                     - Main session reference (slimmed)"
-echo -e "  ${GREEN}✓${NC} PROJECT_STATE.md              - System status tracking"
-echo -e "  ${GREEN}✓${NC} .claude/settings.json         - Permissions & hooks"
-echo -e "  ${GREEN}✓${NC} .claude/settings.local.json   - Personal overrides (gitignored)"
-echo -e "  ${GREEN}✓${NC} .claude/rules/code-style.md   - Code conventions (path-specific)"
-echo -e "  ${GREEN}✓${NC} .claude/rules/testing.md       - Testing standards (path-specific)"
-echo -e "  ${GREEN}✓${NC} .claude/skills/commit/SKILL.md - Commit skill"
-echo -e "  ${GREEN}✓${NC} .github/workflows/ci.yml      - CI pipeline template"
-echo -e "  ${GREEN}✓${NC} .gitignore                    - Git ignore rules"
+echo -e "  ${GREEN}✓${NC} CLAUDE.md                        - Main session reference (model-agnostic)"
+echo -e "  ${GREEN}✓${NC} PROJECT_STATE.md                 - System status tracking"
+echo -e "  ${GREEN}✓${NC} SESSION_LOG.md                   - Append-only work history"
+echo -e "  ${GREEN}✓${NC} CONTINUATION_GUIDE.md            - Quick-start reference"
+echo -e "  ${GREEN}✓${NC} .claude/settings.json            - Permissions & hooks"
+echo -e "  ${GREEN}✓${NC} .claude/settings.local.json      - Personal overrides (gitignored)"
+echo -e "  ${GREEN}✓${NC} .claude/rules/code-style.md      - Code conventions (path-specific)"
+echo -e "  ${GREEN}✓${NC} .claude/rules/testing.md         - Testing standards (path-specific)"
+echo -e "  ${GREEN}✓${NC} .claude/skills/commit/SKILL.md   - Commit skill"
+echo -e "  ${GREEN}✓${NC} .claude/skills/handoff/SKILL.md  - Model handoff skill"
+echo -e "  ${GREEN}✓${NC} .github/workflows/ci.yml         - CI pipeline template"
+echo -e "  ${GREEN}✓${NC} .gitignore                       - Git ignore rules"
 echo ""
 echo -e "Created directories:"
 echo -e "  ${GREEN}✓${NC} src/              - Source code"
 echo -e "  ${GREEN}✓${NC} tests/            - Test files"
 echo -e "  ${GREEN}✓${NC} docs/             - Documentation"
 echo -e "  ${GREEN}✓${NC} scripts/          - Utility scripts"
-echo -e "  ${GREEN}✓${NC} .claude/skills/   - Custom skills"
+echo -e "  ${GREEN}✓${NC} .claude/skills/   - Custom skills (commit, handoff)"
 echo -e "  ${GREEN}✓${NC} .claude/rules/    - Modular rule files"
 echo -e "  ${GREEN}✓${NC} .claude/hooks/    - Custom hooks"
 echo -e "  ${GREEN}✓${NC} .github/workflows/ - CI/CD"
 echo ""
-echo -e "${CYAN}v4.0 Highlights:${NC}"
-echo -e "  • Hooks — shell script fixer (PostToolUse) and notification alerts"
-echo -e "  • Modular rules — path-specific conventions in .claude/rules/"
-echo -e "  • Auto-memory — replaces SESSION_LOG.md and CONTINUATION_GUIDE.md"
-echo -e "  • Language-agnostic — no Python-specific references"
-echo -e "  • Slimmer CLAUDE.md — under 100 lines, focused on project-specific guidance"
-echo -e "  • Agent teams — noted as successor to loop-based plugins"
+echo -e "${CYAN}v4.1 Highlights:${NC}"
+echo -e "  • Model-agnostic — works with Claude Code, Copilot, Codex, Gemini, etc."
+echo -e "  • /handoff skill — explicit commit to hand project off to another AI model"
+echo -e "  • Zero token overhead — Claude Code uses auto-memory by default"
+echo -e "  • Session files restored — SESSION_LOG.md and CONTINUATION_GUIDE.md back"
+echo -e "  • Three-state model — Claude normal / Claude handoff / any other model"
 echo ""
 echo -e "${BLUE}Next steps:${NC}"
 echo -e "  1. cd $PROJECT_DIR"
 echo -e "  2. Customize .claude/rules/ for your language and framework"
 echo -e "  3. Run /init to generate codebase-specific instructions"
 echo -e "  4. Start Claude Code: claude"
+echo ""
+echo -e "${CYAN}When you need to switch AI models:${NC}"
+echo -e "  Tell Claude Code: ${YELLOW}\"commit for model handoff\"${NC} or run ${YELLOW}/handoff${NC}"
 echo ""
